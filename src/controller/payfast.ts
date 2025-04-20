@@ -10,7 +10,7 @@ const NotifyUrl = process.env.NOTIFY_URL
 
 export default async function Pay(req: Request, res: Response) {
 
-    const { name,amount, item_name } = req.body
+    const { Clientname,amount, item_name_quantity, productID } = req.body
     
     const paymentData = {
         merchant_id: MerchantId,
@@ -18,9 +18,11 @@ export default async function Pay(req: Request, res: Response) {
         return_url: ReturnUrl,
         cancel_url: CancelUrl,
         notify_url: NotifyUrl,
-        name,
+        Clientname,
         amount,
-        item_name}
+        item_name_quantity,
+        productID
+      }
 
         const formFields = Object.entries(paymentData)
         .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
