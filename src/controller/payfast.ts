@@ -1,5 +1,8 @@
 import 'dotenv/config'
 import { Request, Response } from 'express'
+import qs from 'querystring'
+import https from 'https'
+import crypto from 'crypto'
 
 const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process'
 const MerchantId = process.env.MERCHANT_ID
@@ -33,4 +36,63 @@ export async function Pay(req: Request, res: Response) {
 
 export function Hi(req: Request, res: Response) {
     res.send('Hello World!')
+}
+
+export async function Notify(req: Request, res: Response) {
+     // Payfast sends the ITN data as x-www-form-urlencoded
+  const pfData = req.body;
+
+  // Validate signature
+  const pfSignature = pfData['signature']
+  delete pfData['signature']
+
+  const pfParamString = Object.keys(pfData)
+    .sort()
+    .map(key => `${key}=${encodeURIComponent(pfData[key])}`)
+    .join('&')
+
+  const generatedSignature = crypto
+    .createHash('md5')
+    .update(pfParamString)
+    .digest('hex');
+
+  if (pfSignature !== generatedSignature) {
+    console.log('Invalid signature');
+    return res.status(400).send('Invalid signature');
+  }
+
+  // Validate data with Payfast (server-to-server)
+  const options = {
+    hostname: 'sandbox.payfast.co.za',
+    port: 443,
+    path: '/eng/query/validate',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  };
+
+  const requestBody = qs.stringify(req.body);
+
+  const pfRequest = https.request(options, pfRes => {
+    let data = '';
+    pfRes.on('data', chunk => (data += chunk));
+    pfRes.on('end', () => {
+      if (data === 'VALID') {
+        console.log('Payment verified by Payfast');
+     
+      } else {
+        console.log('Payfast verification failed');
+      }
+    });
+  });
+
+  pfRequest.on('error', error => {
+    console.error('Payfast validation error:', error);
+  });
+
+  pfRequest.write(requestBody);
+  pfRequest.end();
+
+  res.status(200).send('ITN received');
 }
