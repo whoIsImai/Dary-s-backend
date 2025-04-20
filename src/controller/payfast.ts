@@ -8,7 +8,7 @@ const ReturnUrl = process.env.RETURN_URL
 const CancelUrl = process.env.CANCEL_URL
 const NotifyUrl = process.env.NOTIFY_URL
 
-export default async function Pay(req: Request, res: Response) {
+export async function Pay(req: Request, res: Response) {
 
     const { Clientname,amount, item_name_quantity, productID } = req.body
     
@@ -29,5 +29,8 @@ export default async function Pay(req: Request, res: Response) {
         .join('&')
     
       res.send(`${PAYFAST_URL}?${formFields}`)
+}
 
+export function Hi(req: Request, res: Response) {
+    res.send('Hello World!')
 }
