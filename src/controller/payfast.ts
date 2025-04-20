@@ -11,7 +11,7 @@ const ReturnUrl = process.env.RETURN_URL
 const CancelUrl = process.env.CANCEL_URL
 const NotifyUrl = process.env.NOTIFY_URL
 
-export async function Pay(req: Request, res: Response) {
+export async function Pay(req: Request, res: Response) : Promise<void> {
 
     const { Clientname,amount, item_name_quantity, productID } = req.body
     
@@ -31,14 +31,14 @@ export async function Pay(req: Request, res: Response) {
         .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
         .join('&')
     
-      res.send(`${PAYFAST_URL}?${formFields}`)
+     res.send(`${PAYFAST_URL}?${formFields}`)
 }
 
 export function Hi(req: Request, res: Response) {
     res.send('Hello World!')
 }
 
-export async function Notify(req: Request, res: Response) {
+export async function Notify(req: Request, res: Response) : Promise<void> {
      // Payfast sends the ITN data as x-www-form-urlencoded
   const pfData = req.body;
 
@@ -54,11 +54,11 @@ export async function Notify(req: Request, res: Response) {
   const generatedSignature = crypto
     .createHash('md5')
     .update(pfParamString)
-    .digest('hex');
+    .digest('hex')
 
   if (pfSignature !== generatedSignature) {
-    console.log('Invalid signature');
-    return res.status(400).send('Invalid signature');
+    console.log('Invalid signature')
+     res.status(400).send('Invalid signature')
   }
 
   // Validate data with Payfast (server-to-server)
@@ -72,27 +72,27 @@ export async function Notify(req: Request, res: Response) {
     },
   };
 
-  const requestBody = qs.stringify(req.body);
+  const requestBody = qs.stringify(req.body)
 
   const pfRequest = https.request(options, pfRes => {
-    let data = '';
-    pfRes.on('data', chunk => (data += chunk));
+    let data = ''
+    pfRes.on('data', chunk => (data += chunk))
     pfRes.on('end', () => {
       if (data === 'VALID') {
-        console.log('Payment verified by Payfast');
+        console.log('Payment verified by Payfast')
      
       } else {
-        console.log('Payfast verification failed');
+        console.log('Payfast verification failed')
       }
     });
   });
 
   pfRequest.on('error', error => {
-    console.error('Payfast validation error:', error);
+    console.error('Payfast validation error:', error)
   });
 
-  pfRequest.write(requestBody);
-  pfRequest.end();
+  pfRequest.write(requestBody)
+  pfRequest.end()
 
-  res.status(200).send('ITN received');
+  res.status(200).send('ITN received')
 }
