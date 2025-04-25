@@ -35,7 +35,7 @@ export async function Pay(req: Request, res: Response) : Promise<void> {
 }
 
 export function Hi(req: Request, res: Response) {
-    res.json({message: 'Hey there!'})
+res.send('Hello from Payfast')
 }
 
 export async function Notify(req: Request, res: Response) : Promise<void> {
