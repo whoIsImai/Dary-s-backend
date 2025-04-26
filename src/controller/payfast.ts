@@ -13,7 +13,7 @@ const NotifyUrl = process.env.NOTIFY_URL
 
 export async function Pay(req: Request, res: Response) : Promise<void> {
 
-    const { Clientname,amount, item_name_quantity } = req.body
+    const { Clientname,amount, item_name_quantity, item_description } = req.body
     
     const paymentData = {
         merchant_id: MerchantId,
@@ -24,6 +24,7 @@ export async function Pay(req: Request, res: Response) : Promise<void> {
         Clientname,
         amount,
         item_name_quantity,
+        item_description
       }
 
         const formFields = Object.entries(paymentData)
