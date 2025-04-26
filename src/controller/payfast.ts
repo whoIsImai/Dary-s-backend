@@ -13,7 +13,7 @@ const NotifyUrl = process.env.NOTIFY_URL
 
 export async function Pay(req: Request, res: Response) : Promise<void> {
 
-    const { Clientname,amount, item_name_quantity, item_description } = req.body
+    const { Clientname,amount, item_name, item_description } = req.body
     
     const paymentData = {
         merchant_id: MerchantId,
@@ -23,14 +23,14 @@ export async function Pay(req: Request, res: Response) : Promise<void> {
         notify_url: NotifyUrl,
         Clientname,
         amount,
-        item_name_quantity,
+        item_name,
         item_description
       }
 
         const formFields = Object.entries(paymentData)
         .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
         .join('&')
-    
+    console.log(`${PAYFAST_URL}?${formFields}`)
      res.send(`${PAYFAST_URL}?${formFields}`)
 }
 
