@@ -42,27 +42,27 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
   console.log('ITN received from Payfast')
   console.log('ITN data:', req.body)
      // Payfast sends the ITN data as x-www-form-urlencoded
-  const pfData = req.body;
-
-  // Validate signature
-  const pfSignature = pfData['signature']
-  delete pfData['signature']
-
-  const pfParamString = Object.keys(pfData)
-    .sort()
-    .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
-    .join('&')
-
-  const generatedSignature = crypto
-    .createHash('md5')
-    .update(pfParamString)
-    .digest('hex')
-
-  if (pfSignature !== generatedSignature) {
-    console.log('Invalid signature')
-     res.status(400).send('Invalid signature')
-    return
-  }
+     const originalBody = { ...req.body }
+     const pfData = { ...req.body }
+   
+     const pfSignature = pfData['signature']
+     delete pfData['signature']
+   
+     const pfParamString = Object.keys(pfData)
+       .sort()
+       .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
+       .join('&')
+   
+     const generatedSignature = crypto
+       .createHash('md5')
+       .update(pfParamString)
+       .digest('hex')
+   
+     if (pfSignature !== generatedSignature) {
+       console.log('Invalid signature')
+       res.status(400).send('Invalid signature')
+       return
+     }
 
   // Validate data with Payfast (server-to-server)
   const options = {
@@ -75,7 +75,7 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
     },
   };
 
-  const requestBody = qs.stringify(req.body)
+  const requestBody = qs.stringify(originalBody)
 
   const pfRequest = https.request(options, pfRes => {
     let data = ''
