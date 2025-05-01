@@ -24,8 +24,7 @@ export async function Pay(req: Request, res: Response) : Promise<void> {
         Clientname,
         amount,
         item_name,
-        item_description,
-        orderID
+        item_description
       }
 
         const formFields = Object.entries(paymentData)
