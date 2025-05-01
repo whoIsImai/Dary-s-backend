@@ -39,6 +39,8 @@ res.send('Hello from Payfast')
 }
 
 export async function Notify(req: Request, res: Response) : Promise<void> {
+  console.log('ITN received from Payfast')
+  console.log('ITN data:', req.body)
      // Payfast sends the ITN data as x-www-form-urlencoded
   const pfData = req.body;
 
@@ -48,7 +50,7 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
 
   const pfParamString = Object.keys(pfData)
     .sort()
-    .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
+    .map(key => `${key}=${encodeURIComponent(pfData[key])}`)
     .join('&')
 
   const generatedSignature = crypto
