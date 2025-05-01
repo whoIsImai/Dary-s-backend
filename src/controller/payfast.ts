@@ -48,7 +48,7 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
 
   const pfParamString = Object.keys(pfData)
     .sort()
-    .map(key => `${key}=${encodeURIComponent(pfData[key])}`)
+    .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
     .join('&')
 
   const generatedSignature = crypto
@@ -59,6 +59,7 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
   if (pfSignature !== generatedSignature) {
     console.log('Invalid signature')
      res.status(400).send('Invalid signature')
+    return
   }
 
   // Validate data with Payfast (server-to-server)
