@@ -50,7 +50,7 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
 
   const pfParamString = Object.keys(pfData)
     .sort()
-    .map(key => `${key}=${encodeURIComponent(pfData[key])}`)
+    .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
     .join('&')
 
   const generatedSignature = crypto
