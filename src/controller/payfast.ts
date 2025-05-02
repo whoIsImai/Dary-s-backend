@@ -44,14 +44,19 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
       const originalBody = { ...req.body }
       console.log('ITN data:', originalBody)
      const pfData = { ...req.body }
+     const Passphrase = process.env.PASSPHRASE
    
      const pfSignature = pfData['signature']
      delete pfData['signature']
    
-     const pfParamString = Object.keys(pfData)
+     let pfParamString = Object.keys(pfData)
        .sort()
        .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
        .join('&')
+
+      if(Passphrase){
+        pfParamString += `&passphrase=${encodeURIComponent(Passphrase).replace(/%20/g, '+')}`
+      }
    
      const generatedSignature = crypto
        .createHash('md5')
