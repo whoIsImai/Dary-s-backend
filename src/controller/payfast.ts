@@ -48,13 +48,13 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
   const requestHeaders = {
       'Content-Type': 'application/json',
       Authorization: `Basic ${accountApiCredentials}`,
+      testMode: true,
   }
   const requestData = JSON.stringify({
     messages: [
       {
         content: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`,
         destination: process.env.DESTINATION,
-        testMode: true,
       }
     ]
   })
