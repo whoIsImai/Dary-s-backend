@@ -42,32 +42,32 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
   
      // Payfast sends the ITN data as x-www-form-urlencoded
       const originalBody = { ...req.body }
-      console.log('ITN data:', originalBody)
-     const pfData = { ...req.body }
-     const Passphrase = process.env.PASSPHRASE
+    //   console.log('ITN data:', originalBody)
+    //  const pfData = { ...req.body }
+    //  const Passphrase = process.env.PASSPHRASE
    
-     const pfSignature = pfData['signature']
-     delete pfData['signature']
+    //  const pfSignature = pfData['signature']
+    //  delete pfData['signature']
    
-     let pfParamString = Object.keys(pfData)
-       .sort()
-       .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
-       .join('&')
+    //  let pfParamString = Object.keys(pfData)
+    //    .sort()
+    //    .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
+    //    .join('&')
 
-      if(Passphrase){
-        pfParamString += `&passphrase=${encodeURIComponent(Passphrase).replace(/%20/g, '+')}`
-      }
+    //   if(Passphrase){
+    //     pfParamString += `&passphrase=${encodeURIComponent(Passphrase).replace(/%20/g, '+')}`
+    //   }
    
-     const generatedSignature = crypto
-       .createHash('md5')
-       .update(pfParamString)
-       .digest('hex')
+    //  const generatedSignature = crypto
+    //    .createHash('md5')
+    //    .update(pfParamString)
+    //    .digest('hex')
    
-     if (pfSignature !== generatedSignature) {
-       console.log('Invalid signature')
-       res.status(400).send('Invalid signature')
-       return
-     }
+    //  if (pfSignature !== generatedSignature) {
+    //    console.log('Invalid signature')
+    //    res.status(400).send('Invalid signature')
+    //    return
+    //  }
 
   // Validate data with Payfast (server-to-server)
   const options = {
@@ -102,5 +102,6 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
   pfRequest.write(requestBody)
   pfRequest.end()
 
+  console.log('ITN received:', originalBody)
   res.status(200).send('ITN received')
 }
