@@ -3,6 +3,7 @@ import { Request, Response } from 'express'
 import qs from 'querystring'
 import https from 'https'
 import crypto from 'crypto'
+import axios from 'axios'
 
 const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process'
 const MerchantId = process.env.MERCHANT_ID
@@ -39,7 +40,25 @@ res.send('Hello from Payfast')
 }
 
 export async function Notify(req: Request, res: Response) : Promise<void> {
-  
+
+  const { Clientname, amount, item_name, orderID } = req.body
+  const ClientID = process.env.CLIENT_ID
+  const API_SECRET = process.env.API_SECRET
+  const accountApiCredentials = Buffer.from(`${ClientID}:${API_SECRET}`).toString('base64')
+  const requestHeaders = {
+      'Content-Type': 'application/json',
+      Authorization: `Basic ${accountApiCredentials}`,
+  }
+  const requestData = JSON.stringify({
+    messages: [
+      {
+        content: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`,
+        destination: process.env.DESTINATION,
+        testMode: true,
+      }
+    ]
+  })
+
      // Payfast sends the ITN data as x-www-form-urlencoded
       const originalBody = { ...req.body }
     //   console.log('ITN data:', originalBody)
@@ -88,7 +107,18 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
     pfRes.on('end', () => {
       if (data === 'VALID') {
         console.log('Payment verified by Payfast')
-     
+        axios.post('https://rest.mymobileapi.com/bulkmessages', requestData, { headers: requestHeaders })
+          .then(response => {
+            console.log('SMS sent successfully:', response.data)
+          })
+          .catch(error => {
+            if(error.response) {
+              console.error('Error sending SMS:', error.response.data)
+            }
+            else {
+              console.error('Error sending SMS:', error.message)
+            }
+          })
       } else {
         console.log('Payfast verification failed')
       }
