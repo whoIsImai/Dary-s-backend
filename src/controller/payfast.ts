@@ -15,7 +15,7 @@ const NotifyUrl = process.env.NOTIFY_URL
 export async function Pay(req: Request, res: Response) : Promise<void> {
 
     const { Clientname,amount, item_name, item_description, orderID } = req.body
-    
+
     const paymentData = {
         merchant_id: MerchantId,
         merchant_key: MerchantKey,
@@ -55,6 +55,7 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
       {
         content: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`,
         destination: process.env.DESTINATION,
+        sample: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`
       }
     ]
   })
@@ -107,18 +108,18 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
     pfRes.on('end', () => {
       if (data === 'VALID') {
         console.log('Payment verified by Payfast')
-        axios.post('https://rest.mymobileapi.com/bulkmessages', requestData, { headers: requestHeaders })
-          .then(response => {
-            console.log('SMS sent successfully:', response.data)
-          })
-          .catch(error => {
-            if(error.response) {
-              console.error('Error sending SMS:', error.response.data)
-            }
-            else {
-              console.error('Error sending SMS:', error.message)
-            }
-          })
+        // axios.post('https://rest.mymobileapi.com/bulkmessages', requestData, { headers: requestHeaders })
+        //   .then(response => {
+        //     console.log('SMS sent successfully: \n', response.data)
+        //   })
+        //   .catch(error => {
+        //     if(error.response) {
+        //       console.error('Error sending SMS:', error.response.data)
+        //     }
+        //     else {
+        //       console.error('Error sending SMS:', error.message)
+        //     }
+        //   })
       } else {
         console.log('Payfast verification failed')
       }
