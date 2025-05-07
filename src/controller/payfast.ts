@@ -155,32 +155,30 @@ function verifyPayFastSignature(requestBody: PayFastData, passphrase?: string): 
   const pfSignature = pfData['signature'];
   delete pfData['signature'];
 
-  let paramString = '';
+   let pfOutput = '';
 
-  for (const key of PAYFAST_ORDER) {
+  // Respect the order of attributes as per documentation (do NOT sort keys)
+  for (const key in pfData) {
     const val = pfData[key];
-    if (val !== undefined && val !== null && val.trim() !== '') {
+    if (val !== '') {
       const encoded = encodeURIComponent(val.trim()).replace(/%20/g, '+');
-      paramString += `${key}=${encoded}&`;
+      pfOutput += `${key}=${encoded}&`;
     }
   }
 
-  // Remove trailing &
-  if (paramString.endsWith('&')) {
-    paramString = paramString.slice(0, -1);
-  }
+  // Remove trailing "&"
+  pfOutput = pfOutput.slice(0, -1);
 
   // Add passphrase if provided
   if (passphrase) {
-    const encodedPassphrase = encodeURIComponent(passphrase.trim()).replace(/%20/g, '+');
-    paramString += `&passphrase=${encodedPassphrase}`;
+    pfOutput += `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, '+')}`;
   }
 
-  console.log('PayFast param string:', paramString);
+  console.log('PayFast param string:', pfOutput);
 
   const generatedSignature = crypto
     .createHash('md5')
-    .update(paramString)
+    .update(pfOutput)
     .digest('hex');
 
   console.log('Generated signature:', generatedSignature);
