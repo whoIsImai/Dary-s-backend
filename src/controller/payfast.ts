@@ -14,7 +14,7 @@ const NotifyUrl = process.env.NOTIFY_URL
 
 export async function Pay(req: Request, res: Response) : Promise<void> {
 
-    const { Clientname,amount, item_name, item_description, orderID } = req.body
+    const { name_first,amount, item_name, item_description, orderID } = req.body
 
     const paymentData = {
         merchant_id: MerchantId,
@@ -22,7 +22,7 @@ export async function Pay(req: Request, res: Response) : Promise<void> {
         return_url: ReturnUrl,
         cancel_url: CancelUrl,
         notify_url: NotifyUrl,
-        Clientname,
+        name_first,
         amount,
         item_name,
         item_description
@@ -31,63 +31,40 @@ export async function Pay(req: Request, res: Response) : Promise<void> {
         const formFields = Object.entries(paymentData)
         .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
         .join('&')
-    console.log(`${PAYFAST_URL}?${formFields}`)
      res.send(`${PAYFAST_URL}?${formFields}`)
 }
 
-export function Hi(req: Request, res: Response) {
-res.send('Hello from Payfast')
-}
+export async function Notify(req: Request, res: Response) : Promise<any> {
 
-export async function Notify(req: Request, res: Response) : Promise<void> {
+  // const { Clientname, amount, item_name, orderID } = req.body
+  // const ClientID = process.env.CLIENT_ID
+  // const API_SECRET = process.env.API_SECRET
+  // const accountApiCredentials = Buffer.from(`${ClientID}:${API_SECRET}`).toString('base64')
+  // const requestHeaders = {
+  //     'Content-Type': 'application/json',
+  //     Authorization: `Basic ${accountApiCredentials}`,
+  //     testMode: true,
+  // }
+  // const requestData = JSON.stringify({
+  //   messages: [
+  //     {
+  //       content: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`,
+  //       destination: process.env.DESTINATION,
+  //       sample: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`
+  //     }
+  //   ]
+  // })
 
-  const { Clientname, amount, item_name, orderID } = req.body
-  const ClientID = process.env.CLIENT_ID
-  const API_SECRET = process.env.API_SECRET
-  const accountApiCredentials = Buffer.from(`${ClientID}:${API_SECRET}`).toString('base64')
-  const requestHeaders = {
-      'Content-Type': 'application/json',
-      Authorization: `Basic ${accountApiCredentials}`,
-      testMode: true,
-  }
-  const requestData = JSON.stringify({
-    messages: [
-      {
-        content: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`,
-        destination: process.env.DESTINATION,
-        sample: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`
-      }
-    ]
-  })
-
-     // Payfast sends the ITN data as x-www-form-urlencoded
       const originalBody = { ...req.body }
-    //   console.log('ITN data:', originalBody)
-    //  const pfData = { ...req.body }
-    //  const Passphrase = process.env.PASSPHRASE
-   
-    //  const pfSignature = pfData['signature']
-    //  delete pfData['signature']
-   
-    //  let pfParamString = Object.keys(pfData)
-    //    .sort()
-    //    .map(key => `${key}=${encodeURIComponent(pfData[key]).replace(/%20/g, '+')}`)
-    //    .join('&')
+  const passphrase = process.env.PAYFAST_PASSPHRASE
+  const signatureVerification = verifyPayFastSignature(originalBody, passphrase)
 
-    //   if(Passphrase){
-    //     pfParamString += `&passphrase=${encodeURIComponent(Passphrase).replace(/%20/g, '+')}`
-    //   }
-   
-    //  const generatedSignature = crypto
-    //    .createHash('md5')
-    //    .update(pfParamString)
-    //    .digest('hex')
-   
-    //  if (pfSignature !== generatedSignature) {
-    //    console.log('Invalid signature')
-    //    res.status(400).send('Invalid signature')
-    //    return
-    //  }
+  console.log('Signature verification result:', signatureVerification)
+
+  if (!signatureVerification.isValid) {
+    console.error('Invalid signature')
+    return res.status(400).send('Invalid signature')
+  }
 
   // Validate data with Payfast (server-to-server)
   const options = {
@@ -135,4 +112,54 @@ export async function Notify(req: Request, res: Response) : Promise<void> {
 
   console.log('ITN received:', originalBody)
   res.status(200).send('ITN received')
+}
+
+interface PayFastData {
+  [key: string]: string | undefined;
+  signature?: string;
+}
+
+interface SignatureVerificationResult {
+  isValid: boolean;
+  generatedSignature: string;
+  receivedSignature: string | undefined;
+}
+
+function verifyPayFastSignature(requestBody: PayFastData, passphrase: string | undefined): SignatureVerificationResult {
+
+  const pfData: PayFastData = { ...requestBody };
+  
+  const pfSignature = pfData['signature'];
+  delete pfData['signature'];
+  
+  let pfParamString = Object.keys(pfData)
+    .sort() 
+    .map(key => {
+      const value = encodeURIComponent(pfData[key] || '').replace(/%20/g, '+');
+      return `${key}=${value}`;
+    })
+    .join('&');
+  
+  // Add passphrase if it exists
+  if (passphrase && passphrase.trim() !== '') {
+    pfParamString += `&passphrase=${encodeURIComponent(passphrase)}`;
+  }
+  
+  console.log('PayFast param string:', pfParamString);
+  
+  // Generate MD5 hash as required by PayFast
+  const generatedSignature = crypto
+    .createHash('md5')
+    .update(pfParamString)
+    .digest('hex');
+  
+  console.log('Generated signature:', generatedSignature);
+  console.log('PayFast signature:', pfSignature);
+  
+  // Compare signatures
+  return {
+    isValid: pfSignature === generatedSignature,
+    generatedSignature,
+    receivedSignature: pfSignature
+  };
 }
