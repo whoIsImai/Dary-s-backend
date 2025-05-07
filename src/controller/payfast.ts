@@ -55,9 +55,10 @@ export async function Notify(req: Request, res: Response) : Promise<any> {
   //   ]
   // })
 
-      const originalBody = { ...req.body }
+  const originalBody = { ...req.body }
   const passphrase = process.env.PAYFAST_PASSPHRASE
-  const signatureVerification = verifyPayFastSignature(originalBody, passphrase)
+
+  const signatureVerification = verifyPayFastSignature(originalBody)
 
   console.log('Signature verification result:', signatureVerification)
 
@@ -125,41 +126,50 @@ interface SignatureVerificationResult {
   receivedSignature: string | undefined;
 }
 
-function verifyPayFastSignature(requestBody: PayFastData, passphrase: string | undefined): SignatureVerificationResult {
-
-  const pfData: PayFastData = { ...requestBody };
-  
-  const pfSignature = pfData['signature'];
+function verifyPayFastSignature(requestBody: PayFastData, passphrase?: string): SignatureVerificationResult {
+  const pfSignature = requestBody['signature'];
+  const pfData = { ...requestBody };
   delete pfData['signature'];
-  
-  let pfParamString = Object.keys(pfData)
-    .sort() 
-    .map(key => {
-      const value = encodeURIComponent(pfData[key] || '').replace(/%20/g, '+');
-      return `${key}=${value}`;
-    })
-    .join('&');
-  
-  // Add passphrase if it exists
-  if (passphrase && passphrase.trim() !== '') {
-    pfParamString += `&passphrase=${encodeURIComponent(passphrase)}`;
+
+  let pfParamString = '';
+
+  for (const [key, val] of Object.entries(pfData)) {
+    if (val !== undefined && val.trim() !== '') {
+      const encoded = encodeURIComponent(val.trim())
+        .replace(/%20/g, '+')
+        .replace(/%[a-f0-9]{2}/gi, (match) => match.toUpperCase()); // uppercase %xx
+      pfParamString += `${key}=${encoded}&`;
+    }
   }
-  
+
+  // Remove trailing '&'
+  if (pfParamString.endsWith('&')) {
+    pfParamString = pfParamString.slice(0, -1);
+  }
+
+  // Append passphrase if it exists
+  if (passphrase) {
+    const encodedPass = encodeURIComponent(passphrase.trim())
+      .replace(/%20/g, '+')
+      .replace(/%[a-f0-9]{2}/gi, (match) => match.toUpperCase());
+    pfParamString += `&passphrase=${encodedPass}`;
+  }
+
   console.log('PayFast param string:', pfParamString);
-  
-  // Generate MD5 hash as required by PayFast
+
   const generatedSignature = crypto
     .createHash('md5')
     .update(pfParamString)
     .digest('hex');
-  
+
   console.log('Generated signature:', generatedSignature);
   console.log('PayFast signature:', pfSignature);
-  
-  // Compare signatures
+
   return {
     isValid: pfSignature === generatedSignature,
     generatedSignature,
-    receivedSignature: pfSignature
+    receivedSignature: pfSignature ?? ''
   };
 }
+
+
