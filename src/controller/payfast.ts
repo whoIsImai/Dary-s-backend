@@ -36,36 +36,64 @@ export async function Pay(req: Request, res: Response) : Promise<void> {
 
 export async function Notify(req: Request, res: Response) : Promise<any> {
 
-  // const { Clientname, amount, item_name, orderID } = req.body
-  // const ClientID = process.env.CLIENT_ID
-  // const API_SECRET = process.env.API_SECRET
-  // const accountApiCredentials = Buffer.from(`${ClientID}:${API_SECRET}`).toString('base64')
-  // const requestHeaders = {
-  //     'Content-Type': 'application/json',
-  //     Authorization: `Basic ${accountApiCredentials}`,
-  //     testMode: true,
-  // }
-  // const requestData = JSON.stringify({
-  //   messages: [
-  //     {
-  //       content: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`,
-  //       destination: process.env.DESTINATION,
-  //       sample: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`
-  //     }
-  //   ]
-  // })
+  const { Clientname, amount, item_name, orderID } = req.body
+  const ClientID = process.env.CLIENT_ID
+  const API_SECRET = process.env.API_SECRET
+  const accountApiCredentials = Buffer.from(`${ClientID}:${API_SECRET}`).toString('base64')
+  const requestHeaders = {
+      'Content-Type': 'application/json',
+      Authorization: `Basic ${accountApiCredentials}`,
+      testMode: true,
+  }
+  const requestData = JSON.stringify({
+    messages: [
+      {
+        content: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`,
+        destination: process.env.DESTINATION,
+        message: `Order ID: ${orderID} for : ${Clientname}, Paid: R${amount}, Order: ${item_name}`,
+      }
+    ]
+  })
 
   const originalBody = { ...req.body }
   const passphrase = process.env.PAYFAST_PASSPHRASE
 
-  const signatureVerification = verifyPayFastSignature(originalBody)
+  originalBody['signature'] = verifyPayFastSignature(originalBody)
 
-  console.log('Signature verification result:', signatureVerification)
+  let htmlForm = `<form action="${PAYFAST_URL}" method="post">`
+  for (const key in originalBody) {
+    if (originalBody.hasOwnProperty(key)) {
+      const value = originalBody[key]
+      if (value === undefined) continue
+      htmlForm += `<input type="hidden" name="${key}" value="${value}">`
+    }
+  }
+  htmlForm += `<input type="submit" value="Submit">`
 
-  if (!signatureVerification.isValid) {
-    console.error('Invalid signature')
+  let pfParamString = ""
+  for (const key in originalBody) {
+    if (originalBody.hasOwnProperty(key) && key !== 'signature') {
+      const value = originalBody[key]
+      pfParamString += `${key}=${encodeURIComponent(value.trim()).replace(/%20/g, '+')}&`
+    }
+  }
+
+  pfParamString = pfParamString.slice(0, -1)
+
+  if (passphrase) {
+    pfParamString += `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, '+')}`
+  }
+
+  const generatedSignature = crypto.createHash('md5').update(pfParamString).digest('hex')
+  const receivedSignature = originalBody['signature']
+
+  const isValid = generatedSignature === receivedSignature
+
+  if (!isValid) {
+    console.error('PayFast signature verification failed')
     return res.status(400).send('Invalid signature')
   }
+  
 
   // Validate data with Payfast (server-to-server)
   const options = {
@@ -86,13 +114,13 @@ export async function Notify(req: Request, res: Response) : Promise<any> {
     pfRes.on('end', () => {
       if (data === 'VALID') {
         console.log('Payment verified by Payfast')
-        // axios.post('https://rest.mymobileapi.com/bulkmessages', requestData, { headers: requestHeaders })
+        // axios.post('https://rest.mymobileapi.com/v3/BulkMessages', requestData, { headers: requestHeaders })
         //   .then(response => {
         //     console.log('SMS sent successfully: \n', response.data)
         //   })
         //   .catch(error => {
         //     if(error.response) {
-        //       console.error('Error sending SMS:', error.response.data)
+        //       console.error('Error sending SMS:', error.message, error.response.data)
         //     }
         //     else {
         //       console.error('Error sending SMS:', error.message)
@@ -110,8 +138,6 @@ export async function Notify(req: Request, res: Response) : Promise<any> {
 
   pfRequest.write(requestBody)
   pfRequest.end()
-
-  console.log('ITN received:', originalBody)
   res.status(200).send('ITN received')
 }
 
@@ -120,49 +146,19 @@ interface PayFastData {
   signature?: string;
 }
 
-interface SignatureVerificationResult {
-  isValid: boolean;
-  generatedSignature: string;
-  receivedSignature: string | undefined;
-}
-
-const PAYFAST_ORDER = [
-  'merchant_id',
-  'merchant_key',
-  'return_url',
-  'cancel_url',
-  'notify_url',
-  'name_first',
-  'name_last',
-  'email_address',
-  'cell_number',
-  'm_payment_id',
-  'amount',
-  'item_name',
-  'item_description',
-  'email_confirmation',
-  'confirmation_address',
-  'payment_method',
-  'amount_gross',
-  'amount_fee',
-  'amount_net',
-  'payment_status',
-  'pf_payment_id',
-];
-
-function verifyPayFastSignature(requestBody: PayFastData, passphrase?: string): SignatureVerificationResult {
+function verifyPayFastSignature(requestBody: PayFastData, passphrase?: string) {
   const pfData = { ...requestBody };
-  const pfSignature = pfData['signature'];
   delete pfData['signature'];
 
    let pfOutput = '';
 
   // Respect the order of attributes as per documentation (do NOT sort keys)
   for (const key in pfData) {
-    const val = pfData[key];
-    if (val !== '') {
-      const encoded = encodeURIComponent(val.trim()).replace(/%20/g, '+');
-      pfOutput += `${key}=${encoded}&`;
+    if( pfData.hasOwnProperty(key)) {
+      const value = pfData[key];
+      if (value !== undefined) {
+        pfOutput += `${key}=${encodeURIComponent(value.trim()).replace(/%20/g, '+')}&`;
+      }
     }
   }
 
@@ -174,21 +170,7 @@ function verifyPayFastSignature(requestBody: PayFastData, passphrase?: string): 
     pfOutput += `&passphrase=${encodeURIComponent(passphrase.trim()).replace(/%20/g, '+')}`;
   }
 
-  console.log('PayFast param string:', pfOutput);
-
-  const generatedSignature = crypto
-    .createHash('md5')
-    .update(pfOutput)
-    .digest('hex');
-
-  console.log('Generated signature:', generatedSignature);
-  console.log('PayFast signature:', pfSignature);
-
-  return {
-    isValid: pfSignature === generatedSignature,
-    generatedSignature,
-    receivedSignature: pfSignature,
-  };
+  return crypto.createHash('md5').update(pfOutput).digest('hex');
 }
 
 
