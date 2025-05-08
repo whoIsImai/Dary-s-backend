@@ -5,7 +5,7 @@ import https from 'https'
 import crypto from 'crypto'
 import axios from 'axios'
 
-const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process'
+const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process' //https://www.payfast.co.za/eng/process"
 const MerchantId = process.env.MERCHANT_ID
 const MerchantKey = process.env.MERCHANT_KEY
 const ReturnUrl = process.env.RETURN_URL
